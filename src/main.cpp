@@ -2,11 +2,9 @@
 #include <DFRobotDFPlayerMini.h>
 #include <SoftwareSerial.h>
 
-
-#define ATTINY
+// #define ATTINY
 
 #define PIN_BTN 2
-#define PIN_LED 1
 
 #define RX 3
 #define TX 4
@@ -18,12 +16,14 @@ DFRobotDFPlayerMini player;
 
 unsigned long lastDebounceTime = 0;
 
-void trigger(void)
+void trigger_high(void)
 {
-    static int ledState = 0;
     player.randomAll();
-    digitalWrite(PIN_LED, ledState);
-    ledState = !ledState;
+}
+
+void trigger_low(void)
+{
+    player.stop();
 }
 
 bool check_button(uint8_t pin)
@@ -42,7 +42,20 @@ bool check_button(uint8_t pin)
         {
             oldButtonState = currentButtonState;
             if (oldButtonState == HIGH)
-                return true;
+            {
+#ifndef ATTINY
+                Serial.println("high");
+#endif
+                trigger_high();
+            }
+            if (oldButtonState == LOW)
+            {
+
+#ifndef ATTINY
+                Serial.println("low");
+#endif
+                trigger_low();
+            }
         }
     }
     lastButtonState = currentButtonState;
@@ -56,13 +69,8 @@ void setup(void)
 #endif
     delay(2000);
     softwareSerial.begin(9600);
-
-    pinMode(PIN_LED, OUTPUT);
-
     pinMode(PIN_BTN, INPUT_PULLUP);
     randomSeed(analogRead(5));
-
-    digitalWrite(PIN_LED, LOW);
 
     if (!player.begin(softwareSerial))
     {
@@ -70,7 +78,6 @@ void setup(void)
         Serial.println("unable to begin mp3 player...");
 #endif
 
-        digitalWrite(PIN_LED, HIGH);
         while (true);
     }
 #ifndef ATTINY
@@ -80,17 +87,9 @@ void setup(void)
     softwareSerial.setTimeout(500);
     player.volume(VOLUME);
     player.enableLoopAll();
-    digitalWrite(PIN_LED, LOW);
 }
 
 void loop(void)
 {
-    bool val = check_button(PIN_BTN);
-    if (val)
-    {
-#ifndef ATTINY
-        Serial.println("yup");
-#endif
-        trigger();
-    }
+    check_button(PIN_BTN);
 }
